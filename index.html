@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PyPDF Lab · Tu editor PDF con Python</title>
+  <meta name="description" content="Aprendé a crear tu propio editor de PDF personalizado con Python y PyMuPDF, paso a paso." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Capas de luz -->
+  <canvas id="lights" aria-hidden="true"></canvas>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
+  <div class="orb orb-3" aria-hidden="true"></div>
+  <div id="cursor-glow" aria-hidden="true"></div>
+  <div class="scroll-progress" aria-hidden="true"></div>
+
+  <!-- Navegación (anclas dentro de la misma página) -->
+  <header class="nav">
+    <a href="#inicio" class="logo">
+      <span class="logo-mark">Py</span><span>PDF Lab</span>
+    </a>
+    <nav class="nav-links" aria-label="Secciones">
+      <a href="#herramientas">Herramientas</a>
+      <a href="#pasos">Paso a paso</a>
+      <a href="#demo">Demo</a>
+      <a href="#codigo">Código</a>
+      <a href="#tips">Tips</a>
+    </nav>
+    <button class="light-toggle" id="lightToggle" aria-pressed="true" title="Encender / apagar luces">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Luces</span>
+    </button>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero" id="inicio">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="dot"></span> Tutorial práctico · Python 3.10+</p>
+        <h1 class="hero-title" aria-label="Construí tu propio editor de PDF con Python">
+          <span class="line">Construí tu propio</span>
+          <span class="line"><span class="neon">editor de PDF</span></span>
+          <span class="line">con Python.</span>
+        </h1>
+        <p class="hero-sub">Abrí, escribí, resaltá, censurá, rotá y uní documentos con unas pocas líneas de código. Después lo envolvemos en una interfaz gráfica y listo: tu editor, a tu medida.</p>
+        <div class="hero-cta">
+          <a href="#pasos" class="btn btn-primary magnetic"><span>Empezar ahora</span></a>
+          <a href="#demo" class="btn btn-ghost magnetic"><span>Probar la demo</span></a>
+        </div>
+        <ul class="hero-stats">
+          <li><strong data-count="3">0</strong><span>líneas para abrir un PDF</span></li>
+          <li><strong data-count="6">0</strong><span>pasos hasta tu editor</span></li>
+          <li><strong data-count="100">0</strong><span>% código abierto</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-visual" id="heroVisual">
+        <div class="pdf-stack" id="pdfStack">
+          <div class="pdf-card c3"></div>
+          <div class="pdf-card c2"></div>
+          <div class="pdf-card c1">
+            <div class="pdf-top"><span></span><span></span><span></span><em>factura.pdf</em></div>
+            <div class="pdf-body">
+              <div class="bar w80"></div>
+              <div class="bar w60"></div>
+              <div class="bar w90 hl"></div>
+              <div class="bar w70"></div>
+              <div class="bar w40 red"></div>
+              <div class="bar w85"></div>
+              <div class="pdf-stamp">EDITADO</div>
+            </div>
+            <div class="pdf-cursor"></div>
+          </div>
+          <div class="float-tag t1"><code>page.insert_text()</code></div>
+          <div class="float-tag t2"><code>add_highlight_annot()</code></div>
+          <div class="float-tag t3"><code>doc.save()</code></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MARQUEE -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track">
+        <span>Leer texto</span><i>✦</i><span>Resaltar</span><i>✦</i><span>Censurar datos</span><i>✦</i><span>Marca de agua</span><i>✦</i><span>Unir PDFs</span><i>✦</i><span>Dividir</span><i>✦</i><span>Rotar páginas</span><i>✦</i><span>Insertar imágenes</span><i>✦</i><span>Interfaz gráfica</span><i>✦</i>
+        <span>Leer texto</span><i>✦</i><span>Resaltar</span><i>✦</i><span>Censurar datos</span><i>✦</i><span>Marca de agua</span><i>✦</i><span>Unir PDFs</span><i>✦</i><span>Dividir</span><i>✦</i><span>Rotar páginas</span><i>✦</i><span>Insertar imágenes</span><i>✦</i><span>Interfaz gráfica</span><i>✦</i>
+      </div>
+    </div>
+
+    <!-- HERRAMIENTAS -->
+    <section class="section" id="herramientas">
+      <div class="section-head" data-reveal>
+        <p class="kicker">01 · Kit de herramientas</p>
+        <h2>Las librerías que vas a usar</h2>
+        <p>No hace falta reinventar nada. Estas cuatro piezas cubren todo lo que necesita un editor de PDF.</p>
+      </div>
+
+      <div class="tools-grid">
+        <article class="tool spot" data-reveal style="--accent: var(--blue)">
+          <div class="tool-icon">⚡</div>
+          <h3>PyMuPDF</h3>
+          <p>El motor principal. Lee, renderiza y modifica PDFs a toda velocidad: texto, anotaciones, imágenes y páginas.</p>
+          <button class="pip" data-copy="pip install pymupdf"><code>pip install pymupdf</code><span>Copiar</span></button>
+        </article>
+        <article class="tool spot" data-reveal style="--accent: var(--yellow)">
+          <div class="tool-icon">🖼️</div>
+          <h3>Pillow</h3>
+          <p>Convierte cada página renderizada en una imagen que la interfaz gráfica puede mostrar en pantalla.</p>
+          <button class="pip" data-copy="pip install pillow"><code>pip install pillow</code><span>Copiar</span></button>
+        </article>
+        <article class="tool spot" data-reveal style="--accent: var(--pink)">
+          <div class="tool-icon">🪟</div>
+          <h3>Tkinter</h3>
+          <p>Ya viene con Python. Botones, lienzo y diálogos para abrir y guardar: la cara visible de tu editor.</p>
+          <button class="pip" data-copy="python -m tkinter"><code>python -m tkinter</code><span>Copiar</span></button>
+        </article>
+        <article class="tool spot" data-reveal style="--accent: var(--cyan)">
+          <div class="tool-icon">🧩</div>
+          <h3>pypdf <small>(opcional)</small></h3>
+          <p>Alternativa 100% Python, ideal para tareas simples como unir, dividir o encriptar sin dependencias nativas.</p>
+          <button class="pip" data-copy="pip install pypdf"><code>pip install pypdf</code><span>Copiar</span></button>
+        </article>
+      </div>
+    </section>
+
+    <!-- PASO A PASO -->
+    <section class="section" id="pasos">
+      <div class="section-head" data-reveal>
+        <p class="kicker">02 · Paso a paso</p>
+        <h2>De cero a editor en 6 pasos</h2>
+        <p>Elegí un paso para ver la explicación y el código. Cada bloque se puede copiar y correr tal cual.</p>
+      </div>
+
+      <div class="steps" data-reveal>
+        <div class="step-list" role="tablist" aria-label="Pasos del tutorial">
+          <div class="step-progress"><span id="stepProgress"></span></div>
+          <button class="step-btn active" role="tab" aria-selected="true" data-step="0"><b>1</b><span>Preparar el entorno</span></button>
+          <button class="step-btn" role="tab" aria-selected="false" data-step="1"><b>2</b><span>Abrir y leer</span></button>
+          <button class="step-btn" role="tab" aria-selected="false" data-step="2"><b>3</b><span>Escribir, resaltar y censurar</span></button>
+          <button class="step-btn" role="tab" aria-selected="false" data-step="3"><b>4</b><span>Marca de agua e imágenes</span></button>
+          <button class="step-btn" role="tab" aria-selected="false" data-step="4"><b>5</b><span>Unir, dividir y rotar</span></button>
+          <button class="step-btn" role="tab" aria-selected="false" data-step="5"><b>6</b><span>Mostrarlo en pantalla</span></button>
+        </div>
+
+        <div class="step-panels">
+          <!-- Paso 1 -->
+          <div class="step-panel active" role="tabpanel" data-panel="0">
+            <h3>Preparar el entorno</h3>
+            <p>Creá un entorno virtual para que las librerías del proyecto no se mezclen con las del sistema, e instalá PyMuPDF y Pillow.</p>
+            <div class="code-window">
+              <div class="code-bar"><span></span><span></span><span></span><em>terminal</em><button class="copy-btn">Copiar</button></div>
+<pre><code class="lang-sh"># Crear y activar el entorno virtual
+python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # macOS / Linux
+
+# Instalar dependencias
+pip install pymupdf pillow
+
+# Verificar la instalación
+python -c "import pymupdf; print(pymupdf.__doc__)"</code></pre>
+            </div>
+          </div>
+
+          <!-- Paso 2 -->
+          <div class="step-panel" role="tabpanel" data-panel="1" hidden>
+            <h3>Abrir y leer un PDF</h3>
+            <p>Un documento se comporta como una lista de páginas. Podés recorrerlo, consultar sus metadatos y extraer el texto de cada página.</p>
+            <div class="code-window">
+              <div class="code-bar"><span></span><span></span><span></span><em>leer.py</em><button class="copy-btn">Copiar</button></div>
+<pre><code class="lang-py">import pymupdf
+
+doc = pymupdf.open("contrato.pdf")
+print(f"Páginas: {doc.page_count}")
+print(doc.metadata)
+
+for page in doc:
+    texto = page.get_text()
+    print(f"--- Página {page.number + 1} ---")
+    print(texto[:200])</code></pre>
+            </div>
+          </div>
+
+          <!-- Paso 3 -->
+          <div class="step-panel" role="tabpanel" data-panel="2" hidden>
+            <h3>Escribir, resaltar y censurar</h3>
+            <p>Insertá texto en cualquier coordenada, buscá palabras para resaltarlas y tapá datos sensibles con redacciones reales (el texto se elimina del archivo, no solo se oculta).</p>
+            <div class="code-window">
+              <div class="code-bar"><span></span><span></span><span></span><em>editar.py</em><button class="copy-btn">Copiar</button></div>
+<pre><code class="lang-py">import pymupdf
+
+doc = pymupdf.open("contrato.pdf")
+page = doc[0]
+
+# Escribir texto nuevo (x=72, y=72 puntos desde arriba a la izquierda)
+page.insert_text((72, 72), "APROBADO", fontsize=28, color=(0, 0.6, 0.3))
+
+# Buscar una palabra y resaltarla
+for rect in page.search_for("importe"):
+    page.add_highlight_annot(rect)
+
+# Censurar datos sensibles de verdad
+for rect in page.search_for("DNI"):
+    page.add_redact_annot(rect, fill=(0, 0, 0))
+page.apply_redactions()
+
+doc.save("contrato_editado.pdf")</code></pre>
+            </div>
+          </div>
+
+          <!-- Paso 4 -->
+          <div class="step-panel" role="tabpanel" data-panel="3" hidden>
+            <h3>Marca de agua e imágenes</h3>
+            <p>Recorré todas las páginas y agregá una marca de agua semitransparente inclinada. También podés estampar tu logo en una esquina.</p>
+            <div class="code-window">
+              <div class="code-bar"><span></span><span></span><span></span><em>marca_agua.py</em><button class="copy-btn">Copiar</button></div>
+<pre><code class="lang-py">import pymupdf
+
+doc = pymupdf.open("contrato.pdf")
+
+for page in doc:
+    punto = pymupdf.Point(page.rect.width * 0.18, page.rect.height * 0.6)
+    page.insert_text(
+        punto, "CONFIDENCIAL",
+        fontsize=64, color=(1, 0, 0.4),
+        fill_opacity=0.18,
+        morph=(punto, pymupdf.Matrix(35)),  # inclinar 35 grados
+    )
+    # Logo en la esquina superior derecha
+    page.insert_image(pymupdf.Rect(480, 20, 570, 80), filename="logo.png")
+
+doc.save("contrato_marca.pdf")</code></pre>
+            </div>
+          </div>
+
+          <!-- Paso 5 -->
+          <div class="step-panel" role="tabpanel" data-panel="4" hidden>
+            <h3>Unir, dividir y rotar páginas</h3>
+            <p>Combiná varios archivos en uno, extraé un rango de páginas o reorganizá el documento como quieras.</p>
+            <div class="code-window">
+              <div class="code-bar"><span></span><span></span><span></span><em>paginas.py</em><button class="copy-btn">Copiar</button></div>
+<pre><code class="lang-py">import pymupdf
+
+# Unir varios PDFs
+final = pymupdf.open()
+for ruta in ["a.pdf", "b.pdf", "c.pdf"]:
+    with pymupdf.open(ruta) as parte:
+        final.insert_pdf(parte)
+final.save("unido.pdf")
+
+# Dividir: quedarse con las páginas 1 a 3
+doc = pymupdf.open("unido.pdf")
+extracto = pymupdf.open()
+extracto.insert_pdf(doc, from_page=0, to_page=2)
+extracto.save("primeras_3.pdf")
+
+# Rotar la primera página y borrar la última
+doc[0].set_rotation(90)
+doc.delete_page(-1)
+doc.save("reorganizado.pdf")</code></pre>
+            </div>
+          </div>
+
+          <!-- Paso 6 -->
+          <div class="step-panel" role="tabpanel" data-panel="5" hidden>
+            <h3>Mostrarlo en pantalla</h3>
+            <p>La clave de la interfaz: renderizar la página como imagen con <code>get_pixmap</code> y dibujarla en un lienzo de Tkinter. El editor completo está más abajo.</p>
+            <div class="code-window">
+              <div class="code-bar"><span></span><span></span><span></span><em>visor.py</em><button class="copy-btn">Copiar</button></div>
+<pre><code class="lang-py">import tkinter as tk
+import pymupdf
+from PIL import Image, ImageTk
+
+doc = pymupdf.open("contrato.pdf")
+pix = doc[0].get_pixmap(matrix=pymupdf.Matrix(1.5, 1.5))  # zoom 150%
+img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+
+root = tk.Tk()
+foto = ImageTk.PhotoImage(img)
+tk.Label(root, image=foto).pack()
+root.mainloop()</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEMO -->
+    <section class="section" id="demo">
+      <div class="section-head" data-reveal>
+        <p class="kicker">03 · Demo interactiva</p>
+        <h2>Probalo antes de programarlo</h2>
+        <p>Cada botón simula una herramienta del editor y te muestra la línea de Python que la hace posible.</p>
+      </div>
+
+      <div class="demo" data-reveal>
+        <div class="toolbar" role="toolbar" aria-label="Herramientas de la demo">
+          <button class="tool-btn" data-action="highlight" style="--c: var(--yellow)"><i>🖍️</i>Resaltar</button>
+          <button class="tool-btn" data-action="redact" style="--c: #b9b9d0"><i>⬛</i>Censurar</button>
+          <button class="tool-btn" data-action="stamp" style="--c: var(--green)"><i>✅</i>Sello</button>
+          <button class="tool-btn" data-action="watermark" style="--c: var(--pink)"><i>💧</i>Marca de agua</button>
+          <button class="tool-btn" data-action="rotate" style="--c: var(--cyan)"><i>🔄</i>Rotar</button>
+          <button class="tool-btn" data-action="save" style="--c: var(--blue)"><i>💾</i>Guardar</button>
+          <button class="tool-btn reset" data-action="reset"><i>↺</i>Reiniciar</button>
+        </div>
+
+        <div class="demo-body">
+          <div class="stage">
+            <div class="paper" id="paper">
+              <div class="paper-head">
+                <span class="paper-logo">EN</span>
+                <div>
+                  <strong>Estudio Norte</strong>
+                  <small>Contrato N.º 0427</small>
+                </div>
+              </div>
+              <h4>Contrato de servicios</h4>
+              <p>Entre Estudio Norte y la Sra. Laura Gómez, identificada con <span class="mark-redact">DNI 30.456.789</span>, se acuerda la prestación de servicios de diseño.</p>
+              <p>El <span class="mark-hl">importe total</span> del servicio es de $ 480.000, pagadero en tres cuotas iguales a partir de la firma.</p>
+              <p>Contacto: <span class="mark-redact">laura.gomez@correo.com</span> · Tel. <span class="mark-redact">11 5555-0101</span></p>
+              <div class="skeleton"><span class="w90"></span><span class="w75"></span><span class="w85"></span><span class="w50"></span></div>
+              <p>La vigencia es de doce meses. El <span class="mark-hl">plazo de entrega</span> de cada etapa se detalla en el anexo.</p>
+              <div class="signs"><span>Firma cliente</span><span>Firma estudio</span></div>
+              <div class="stamp" id="stamp">APROBADO</div>
+              <div class="watermark" id="watermark">CONFIDENCIAL</div>
+              <div class="scan" id="scan"></div>
+            </div>
+          </div>
+
+          <div class="console">
+            <div class="code-bar"><span></span><span></span><span></span><em>consola · python</em></div>
+            <div class="console-body" id="console">
+              <div class="console-line muted"># Hacé clic en una herramienta 👆</div>
+              <div class="console-line"><span class="prompt">&gt;&gt;&gt;</span> doc = pymupdf.open("contrato.pdf")</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CÓDIGO COMPLETO -->
+    <section class="section" id="codigo">
+      <div class="section-head" data-reveal>
+        <p class="kicker">04 · Código completo</p>
+        <h2>Tu editor PDF, listo para usar</h2>
+        <p>Abre archivos, navega páginas, escribe texto con un clic, resalta o censura arrastrando el mouse, rota y guarda. Menos de 100 líneas.</p>
+      </div>
+
+      <div class="code-window full" id="fullCode" data-reveal>
+        <div class="code-bar"><span></span><span></span><span></span><em>editor_pdf.py</em><button class="copy-btn">Copiar</button></div>
+<pre><code class="lang-py">import tkinter as tk
+from tkinter import filedialog, simpledialog
+import pymupdf
+from PIL import Image, ImageTk
+
+
+class EditorPDF:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Mi Editor PDF")
+        self.doc = None
+        self.pagina = 0
+        self.zoom = 1.5
+        self.modo = None  # "texto", "resaltar" o "censurar"
+        self.inicio = None
+
+        barra = tk.Frame(root, bg="#1e1e2e")
+        barra.pack(fill="x")
+        botones = [
+            ("Abrir", self.abrir),
+            ("◀", self.anterior),
+            ("▶", self.siguiente),
+            ("Texto", lambda: self.set_modo("texto")),
+            ("Resaltar", lambda: self.set_modo("resaltar")),
+            ("Censurar", lambda: self.set_modo("censurar")),
+            ("Rotar", self.rotar),
+            ("Guardar", self.guardar),
+        ]
+        for texto, comando in botones:
+            tk.Button(barra, text=texto, command=comando).pack(side="left", padx=4, pady=4)
+
+        self.canvas = tk.Canvas(root, bg="#2a2a3a", highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
+        self.canvas.bind("&lt;ButtonPress-1&gt;", self.click)
+        self.canvas.bind("&lt;ButtonRelease-1&gt;", self.soltar)
+
+    # ---------- archivo ----------
+    def abrir(self):
+        ruta = filedialog.askopenfilename(filetypes=[("PDF", "*.pdf")])
+        if ruta:
+            self.doc = pymupdf.open(ruta)
+            self.pagina = 0
+            self.render()
+
+    def guardar(self):
+        if not self.doc:
+            return
+        ruta = filedialog.asksaveasfilename(defaultextension=".pdf")
+        if ruta:
+            self.doc.save(ruta, garbage=3, deflate=True)
+
+    # ---------- vista ----------
+    def render(self):
+        page = self.doc[self.pagina]
+        pix = page.get_pixmap(matrix=pymupdf.Matrix(self.zoom, self.zoom))
+        img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        self.foto = ImageTk.PhotoImage(img)
+        self.canvas.delete("all")
+        self.canvas.create_image(0, 0, anchor="nw", image=self.foto)
+        self.root.title(f"Mi Editor PDF · página {self.pagina + 1}/{len(self.doc)}")
+
+    def anterior(self):
+        if self.doc and self.pagina &gt; 0:
+            self.pagina -= 1
+            self.render()
+
+    def siguiente(self):
+        if self.doc and self.pagina &lt; len(self.doc) - 1:
+            self.pagina += 1
+            self.render()
+
+    # ---------- edición ----------
+    def set_modo(self, modo):
+        self.modo = modo
+
+    def a_pdf(self, x, y):
+        # Convierte píxeles del lienzo en coordenadas de la página
+        page = self.doc[self.pagina]
+        return pymupdf.Point(x / self.zoom, y / self.zoom) * page.derotation_matrix
+
+    def click(self, evento):
+        if not self.doc or not self.modo:
+            return
+        self.inicio = self.a_pdf(evento.x, evento.y)
+        if self.modo == "texto":
+            texto = simpledialog.askstring("Texto", "¿Qué querés escribir?")
+            if texto:
+                self.doc[self.pagina].insert_text(self.inicio, texto, fontsize=14, color=(0.1, 0.2, 0.8))
+                self.render()
+
+    def soltar(self, evento):
+        if not self.doc or self.modo not in ("resaltar", "censurar") or not self.inicio:
+            return
+        page = self.doc[self.pagina]
+        rect = pymupdf.Rect(self.inicio, self.a_pdf(evento.x, evento.y)).normalize()
+        if rect.is_empty:
+            return
+        if self.modo == "resaltar":
+            page.add_highlight_annot(rect)
+        else:
+            page.add_redact_annot(rect, fill=(0, 0, 0))
+            page.apply_redactions()
+        self.render()
+
+    def rotar(self):
+        if self.doc:
+            page = self.doc[self.pagina]
+            page.set_rotation((page.rotation + 90) % 360)
+            self.render()
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.geometry("950x1000")
+    EditorPDF(root)
+    root.mainloop()</code></pre>
+        <button class="expand-btn" id="expandBtn">Ver código completo</button>
+      </div>
+    </section>
+
+    <!-- TIPS -->
+    <section class="section" id="tips">
+      <div class="section-head" data-reveal>
+        <p class="kicker">05 · Para llevarlo más lejos</p>
+        <h2>Ideas para personalizar tu editor</h2>
+      </div>
+      <div class="tips-grid">
+        <article class="tip spot" data-reveal style="--accent: var(--yellow)">
+          <span class="tip-num">01</span>
+          <h3>Deshacer cambios</h3>
+          <p>Guardá una copia con <code>doc.tobytes()</code> antes de cada edición y volvé a abrirla para implementar Ctrl+Z.</p>
+        </article>
+        <article class="tip spot" data-reveal style="--accent: var(--pink)">
+          <span class="tip-num">02</span>
+          <h3>Miniaturas</h3>
+          <p>Renderizá cada página con un zoom de 0.2 y mostralas en una barra lateral para navegar rápido.</p>
+        </article>
+        <article class="tip spot" data-reveal style="--accent: var(--cyan)">
+          <span class="tip-num">03</span>
+          <h3>Firmas</h3>
+          <p>Usá <code>insert_image</code> con un PNG transparente de tu firma y posicionala con un clic.</p>
+        </article>
+        <article class="tip spot" data-reveal style="--accent: var(--green)">
+          <span class="tip-num">04</span>
+          <h3>Ejecutable</h3>
+          <p>Empaquetalo con <code>pyinstaller --onefile editor_pdf.py</code> y compartilo sin que instalen Python.</p>
+        </article>
+      </div>
+
+      <div class="final-cta spot" data-reveal style="--accent: var(--blue)">
+        <h2>Tu editor, tus reglas.</h2>
+        <p>Copiá el código, corrélo y empezá a sumarle las herramientas que necesites.</p>
+        <a href="#codigo" class="btn btn-primary magnetic"><span>Ir al código</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Hecho con Python, PyMuPDF y mucha luz ✦ <a href="#inicio">Volver arriba ↑</a></p>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollToPlugin.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
